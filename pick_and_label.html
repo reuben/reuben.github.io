@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("iframe").addEventListener("load", function() {
+        const iframe = document.getElementById("iframe");
+        const subdoc = iframe.contentDocument;
+        const tagInput = document.getElementById("tag-input");
+        const identifier = document.getElementById("identifier");
+        let pickedElement = null;
+
+        // Prevent users from clicking links in captured bundles
+        subdoc.body.addEventListener("click", function(e) {
+            e.preventDefault();
+        });
+
+        // Controls element picker visibility
+        let picking = true;
+
+        // Overlay element lives in this document to avoid polutting the iframe
+        // document as much as possible. We simply reposition it over the
+        // corresponding element in the iframe.
+        let overlay = document.createElement("div");
+        overlay.style.position = "absolute";
+        overlay.style.opacity = 0.6;
+        overlay.style["background-color"] = "yellow";
+        overlay.style["pointer-events"] = "none";
+        overlay.style["z-index"] = 9999;
+        overlay.style.transition = "all 150ms ease";
+        document.body.appendChild(overlay);
+
+        // Position overlay div over the hovered element
+        function hoverHandler(e) {
+            if (!picking) {
+                return;
+            }
+            let frameRect = iframe.getBoundingClientRect();
+            let rect = e.target.getBoundingClientRect();
+            console.log(e.target.tagName + "#" + e.target.id + " - ", rect.top, rect.left, rect.right, rect.bottom);
+            overlay.style.top = Math.max(frameRect.top, frameRect.top + rect.top) + "px";
+            overlay.style.left = Math.max(frameRect.left, frameRect.left + rect.left) + "px";
+            overlay.style.width = (rect.right - Math.max(0, rect.left)) + "px";
+            overlay.style.height = (rect.bottom - Math.max(0, rect.top)) + "px";
+        }
+
+        // Stop element picker, set picked element and focus tag input
+        function clickHandler(e) {
+            if (!picking) {
+                return;
+            }
+            e.stopPropagation();
+            pickedElement = e.target;
+            identifier.innerHTML = " (" + pickedElement.tagName.toLowerCase() + "#" + pickedElement.id + ")";
+            picking = false;
+            tagInput.disabled = false;
+            tagInput.focus();
+        }
+
+        for (const el of subdoc.body.querySelectorAll('*')) {
+            el.addEventListener("mouseover", hoverHandler);
+            el.addEventListener("click", clickHandler);
+        }
+    });
+});
+</script>
+<div>
+<form>
+<ol>
+    <li>Pick element</li>
+    <li><label for="tag-input">Enter tag for picked element<span id="identifier"></span>: </label>
+        <input type="text" id="tag-input" name="tag-input" disabled/></li>
+    <li><button type="submit" id="btn-submit">Submit</button></li>
+</ol>
+</form>
+</div>
+<iframe id="iframe" width=1024 height=768 src="profile.theguardian.com.html"></iframe>
