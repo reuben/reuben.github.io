@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="child-src 'self'">
 <head>
 <script>
 function createOverlayDiv(options) {
@@ -15,6 +16,9 @@ function createOverlayDiv(options) {
     return overlay;
 }
 
+// Computes top/left/width/height position values corresponding to the displayed
+// position of `innerRect`, which is relative to `outerRect`, but in the root
+// document.
 function outerRelativePositionFromInnerRect(outerRect, innerRect) {
     let result = {};
     result.top = Math.max(outerRect.top, outerRect.top + innerRect.top) + "px";
@@ -24,6 +28,8 @@ function outerRelativePositionFromInnerRect(outerRect, innerRect) {
     return result;
 }
 
+// Positions (absolutely) `overlay` (lives in outer page) over `tracked_element`
+// (lives in `iframe`).
 function updateOverlayPosition(iframe, overlay, tracked_element) {
     const frameRect = iframe.getBoundingClientRect();
     const rect = tracked_element.getBoundingClientRect();
@@ -37,7 +43,7 @@ function updateOverlayPosition(iframe, overlay, tracked_element) {
 function createOverlayForPickedElement(iframe, pickedElement) {
     const taggedOverlay = createOverlayDiv({
         bgcolor: "red",
-        transition: "none",
+        transition: "none", // These should track scrolling without animations
     });
 
     const displayValue = (pickedElement.dataset.fathom || "");
@@ -54,12 +60,12 @@ function createOverlayForPickedElement(iframe, pickedElement) {
     });
     taggedOverlay.appendChild(innerDiv);
 
+    // Position overlay over picked element
     updateOverlayPosition(iframe, taggedOverlay, pickedElement);
     document.body.appendChild(taggedOverlay);
 
-    let last_known_scroll_position = 0;
+    // Track iframe scroll and update overlay position accordingly
     let ticking = false;
-
     iframe.contentWindow.addEventListener("scroll", function(e) {
         if (!ticking) {
             window.requestAnimationFrame(function() {
@@ -71,6 +77,7 @@ function createOverlayForPickedElement(iframe, pickedElement) {
         }
     });
 
+    // Track edits to input field in data-fathom attribute
     taggedOverlay.querySelector("input").addEventListener("input", function(e) {
         if (e.target.value !== "") {
             pickedElement.dataset.fathom = e.target.value;
