@@ -60,7 +60,7 @@ function updateOverlayPosition(iframe, overlay, tracked_element) {
     overlay.style.height = outerPosition.height;
 }
 
-function createOverlayForPickedElement(iframe, pickedElement) {
+function createOverlayForPickedElement(iframe, pickedElement, pickedElementsMap) {
     const taggedOverlay = createOverlayDiv({
         bgcolor: "red",
         transition: "none", // These should track scrolling without animations
@@ -92,6 +92,7 @@ function createOverlayForPickedElement(iframe, pickedElement) {
     removeButton.addEventListener("click", function(e) {
         taggedOverlay.parentElement.removeChild(taggedOverlay);
         delete pickedElement.dataset.fathom;
+        pickedElementsMap.delete(pickedElement);
     });
 
     innerDiv.appendChild(tagInput);
@@ -133,8 +134,8 @@ function handleIframeLoaded() {
     const tagInput = document.getElementById("tag-input");
     const identifier = document.getElementById("identifier");
 
-    // Last picked element
-    let pickedElement = null;
+    // Map of picked elements to corresponding overlay div
+    let pickedElementsMap = new Map();
 
     // Prevent users from clicking links in captured bundles
     subdoc.body.addEventListener("click", function(e) {
@@ -164,8 +165,11 @@ function handleIframeLoaded() {
             return;
         }
         e.stopPropagation();
-        const overlay = createOverlayForPickedElement(iframe, e.target);
-        overlay.querySelector(".tag-input").focus();
+        if (!pickedElementsMap.has(e.target)) {
+            const overlay = createOverlayForPickedElement(iframe, e.target, pickedElementsMap);
+            overlay.querySelector(".tag-input").focus();
+            pickedElementsMap.set(e.target, overlay);
+        }
     }
 
     for (const el of subdoc.body.querySelectorAll("*")) {
@@ -175,7 +179,8 @@ function handleIframeLoaded() {
 
         // Highlight existing tagged elements
         if (el.dataset.fathom) {
-            createOverlayForPickedElement(iframe, el);
+            const overlay = createOverlayForPickedElement(iframe, el, pickedElementsMap);
+            pickedElementsMap.set(el, overlay);
         }
     }
 }
