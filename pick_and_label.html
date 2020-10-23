@@ -183,6 +183,14 @@ function handleIframeLoaded() {
             pickedElementsMap.set(el, overlay);
         }
     }
+
+    document.getElementById("btn-pick").addEventListener("click", function() {
+        picking = !picking;
+        if (!picking) {
+            overlay.style.width = "0px";
+            overlay.style.height = "0px";
+        }
+    });
 }
 
 function handleFormSubmit(e) {
@@ -203,6 +211,7 @@ document.addEventListener("DOMContentLoaded", function() {
 </head>
 <body>
 <div>
+<button id="btn-pick">Toggle element picking</button>
 <form id="form" method="POST">
     <button>Submit</button>
 </form>
