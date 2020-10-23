@@ -4,16 +4,36 @@
 <meta http-equiv="Content-Security-Policy" content="child-src 'self'">
 <head>
 <script>
+// Create a new DOM element with tag `tag`, set attributes in `attrs`.
+// If `attrs` contains inner objects that exist in the created element, recurse
+// and set nested properties, eg. element.style.display.
+function $new(tag, attrs) {
+    function set_attrs(target, attrs) {
+        for (const property in attrs) {
+            if (typeof(attrs[property]) === "object" && typeof(target[property]) !== "undefined") {
+                set_attrs(target[property], attrs[property]);
+            } else {
+                target[property] = attrs[property];
+            }
+        }
+    }
+    let el = document.createElement(tag);
+    set_attrs(el, attrs);
+    return el;
+}
+
 function createOverlayDiv(options) {
     options = options || {};
-    let overlay = document.createElement("div");
-    overlay.style.position = options.position || "absolute";
-    overlay.style.opacity = options.opacity || 0.6;
-    overlay.style["background-color"] = options.bgcolor || "yellow";
-    overlay.style["pointer-events"] = "none";
-    overlay.style["z-index"] = 9999;
-    overlay.style.transition = options.transition || "all 150ms ease";
-    return overlay;
+    return $new("div", {
+        style: {
+            position: options.position || "absolute",
+            opacity: options.opacity || 0.6,
+            "background-color": options.bgcolor || "yellow",
+            "pointer-events": "none",
+            "z-index": 9999,
+            transition: options.transition || "all 150ms ease",
+        },
+    });
 }
 
 // Computes top/left/width/height position values corresponding to the displayed
@@ -48,16 +68,34 @@ function createOverlayForPickedElement(iframe, pickedElement) {
 
     const displayValue = (pickedElement.dataset.fathom || "");
 
-    // Create inner div to display tag value
-    let innerDiv = document.createElement("div");
-    innerDiv.style.position = "relative";
-    innerDiv.style.width = displayValue.length + "em";
-    innerDiv.style["pointer-events"] = "auto";
-    innerDiv.innerHTML = "<input type=\"text\" style=\"width: 100%; min-width: 10em;\" value=\"" + displayValue + "\"></input><button type=\"button\">Remove</button>";
-    innerDiv.querySelector("button").addEventListener("click", function(e) {
+    // Inner div to display tag value with text input and remove button
+    const innerDiv = $new("div", {
+        style: {
+            position: "relative",
+            width: displayValue.length + "em",
+            "pointer-events": "auto",
+        },
+    });
+
+    const tagInput = $new("input", {
+        className: "tag-input",
+        type: "text",
+        style: "width: 100%; min-width: 10em;",
+        value: displayValue,
+    });
+
+    const removeButton = $new("button", {
+        className: "remove-btn",
+        type: "button",
+        innerHTML: "Remove",
+    });
+    removeButton.addEventListener("click", function(e) {
         taggedOverlay.parentElement.removeChild(taggedOverlay);
         delete pickedElement.dataset.fathom;
     });
+
+    innerDiv.appendChild(tagInput);
+    innerDiv.appendChild(removeButton);
     taggedOverlay.appendChild(innerDiv);
 
     // Position overlay over picked element
@@ -78,7 +116,7 @@ function createOverlayForPickedElement(iframe, pickedElement) {
     });
 
     // Track edits to input field in data-fathom attribute
-    taggedOverlay.querySelector("input").addEventListener("input", function(e) {
+    tagInput.addEventListener("input", function(e) {
         if (e.target.value !== "") {
             pickedElement.dataset.fathom = e.target.value;
         } else {
@@ -126,8 +164,8 @@ function handleIframeLoaded() {
             return;
         }
         e.stopPropagation();
-        let overlay = createOverlayForPickedElement(iframe, e.target);
-        overlay.querySelector("input").focus();
+        const overlay = createOverlayForPickedElement(iframe, e.target);
+        overlay.querySelector(".tag-input").focus();
     }
 
     for (const el of subdoc.body.querySelectorAll("*")) {
@@ -143,10 +181,11 @@ function handleIframeLoaded() {
 }
 
 function handleFormSubmit(e) {
-    let hiddenInput = document.createElement("input");
-    hiddenInput.type = "hidden";
-    hiddenInput.name = "page";
-    hiddenInput.value = document.getElementById("iframe").contentDocument.documentElement.innerHTML;
+    const hiddenInput = $new("input", {
+        type: "hidden",
+        name: "page",
+        value: document.getElementById("iframe").contentDocument.documentElement.innerHTML,
+    });
     e.target.appendChild(hiddenInput);
     return true;
 }
