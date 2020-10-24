@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DeepSpeech 0.9 - mature, polished, fast, ubiquitous - Reuben Morais</title>
+<meta charset="utf-8">
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-180169164-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-180169164-1');
+</script>
+<style>
+@import url(https://fonts.googleapis.com/css?family=Open+Sans);
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    text-align: justify;
+}
+
+.center {
+    max-width: 96ch;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+.credits {
+    line-height: 1.5em;
+}
+
+.author {
+    font-size: 14px;
+    font-style: italic;
+    margin-bottom: 30px;
+}
+
+.title {
+    margin-bottom: 0;
+}
+</style>
+</head>
+<body>
+<a href="https://reub.in/">Home</a>
+<div class="center">
+<h1 class="title">DeepSpeech 0.9 - mature, polished, fast, ubiquitous</h1>
+<p class="author">Reuben Morais</p>
+<p><a href="https://github.com/mozilla/DeepSpeech">DeepSpeech</a> is an open-source speech-to-text (STT) engine powered by deep learning. DeepSpeech offers high quality, offline, low latency speech-to-text technology that's simple to integrate into your applications, thanks to our easy-to-use API, which supports multiple architectures, platforms, and programming languages. It leverages TensorFlow Lite for fast and compact inference on low power platforms. DeepSpeech is the result of the hard work of a small team of brilliant people I've had the pleasure to work with over the past few years, and a large group of interested developers, users and organizations.</p>
+
+<p>After volunteering to write the <a href="https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/">first article</a> documenting our work on the project, I unofficially inherited the responsibility of writing about our progress (in typical open source fashion, good deeds are <strike>punished</strike>rewarded with ownership). I did so in <a href="https://hacks.mozilla.org/2018/09/speech-recognition-deepspeech/">two</a> <a href="https://hacks.mozilla.org/2019/12/deepspeech-0-6-mozillas-speech-to-text-engine/">subsequent</a> articles for Mozilla Hacks. These past articles have focused strongly on technical aspects and recognizing the work of our amazing external contributors. This article will also cover technical details and contributions, but this time I would like to start by talking about my brilliant colleagues and former colleagues and some of their contributions that were instrumental in building DeepSpeech.</p>
+
+<h2>The Dream Team</h2>
+
+<p>Alexandre Lissy figured out the at the time scarcely documented TensorFlow Lite API and internals to integrate it into our native client, including adding cross-compilation support for ARM platforms, to enable DeepSpeech to work on Android, Raspberry Pi, and eventually iOS. He also built our extensive continuous integration setup, leveraging Mozilla's TaskCluster project and getting us CI coverage on all our supported platforms and configurations. Together with other French speaking members of our community, Alex coordinated efforts to avoid duplicated work on building French models for DeepSpeech.</p>
+
+<p>Chris Lord reverse engineered the TensorFlow build system to figure out a clever way to integrate it into our C++ inference library, back when both TensorFlow and Bazel were younger, less mature, and less documented projects. Chris also reimplemented the Python feature computation library we used in C, getting the first version of our native client working.</p>
+
+<p>Kelly Davis lead the team with attention and care from the beginning. I'm deeply grateful for his leadership and mentoring, and was always inspired by how hard working and professional he's always been. Kelly wrote the initial replication of the Deep Speech paper from Baidu. He connected our work and our team with interested companies, research groups and governments all around the world, multiplying our reach and impact. He secured grants that enabled the team to work on new, impactful projects such as the Bergamot browser machine translation project.</p>
+
+<p>Tilman Kamp built a cluster management and job scheduler system for our in-house GPU cluster, enabling everyone on the team to run experiments without stepping on each other's feet. Tilman also optimized the training data input pipeline for our cluster; found, imported and cleaned up several English and German datasets for experiments; overhauled our data augmentation code and added several augmentation passes; and built an automatic speech aligner with DeepSpeech called DSAlign, which was used to align tens of thousands of hours of speech data.</p>
+
+<h2>DeepSpeech 0.9</h2>
+
+<p>We have continuously worked to make our speech-to-text engine faster, more capable, and easier to use. Over time our architecture has changed dramatically, driven by research progress and invaluable feedback from early adopters. These improvements have led to growing adoption by developers, who rely on our technology to build voice-powered applications for their users around the world (<a href="https://www.dlr.de/content/en/articles/news/2020/03/20200701_dlr-and-mozilla-researching-technologies-for-voice-control-of-robots.html">and maybe even on the moon!</a>).</p>
+
+<p>Today DeepSpeech 0.9 is <a href="https://github.com/mozilla/DeepSpeech/releases/v0.9.0">available for download from our GitHub release page</a> under the <a href="https://www.mozilla.org/MPL/">Mozilla Public License</a>. It is capable of performing speech-to-text in real-time on devices ranging from a Raspberry Pi 4 to server-grade hardware with GPUs. Bindings are available for Python, Node.JS, Electron, Java/Android, C#/.NET, Swift/iOS, Rust, Go, and more. Pre-trained models are also available for English and an experimental Mandarin Chinese model.</p>
+
+<p>In this post, I’ll talk about how we got here, and what has changed since my <a href="https://hacks.mozilla.org/2019/12/deepspeech-0-6-mozillas-speech-to-text-engine/">last article</a>. I'll cover major performance improvements for mobile devices, experimental iOS support, new model training capabilities to more easily create use-case specific models with your own data, and a new experimental Chinese model.</p>
+
+<h2>Our collaborative journey to production readiness</h2>
+
+<p>DeepSpeech started as our implementation of a speech-to-text architecture proposed in a series of academic papers from Baidu. Our goal was to implement an open source STT engine that could scale to many languages and that was easy to use by application developers, without requiring deep learning expertise. We released early, often, and in the open. This enabled us to incorporate valuable learnings from production deployments, shaping our project for today’s 0.9 release.</p>
+
+<p>Previously, I’ve talked about <a href="https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/">our initial efforts towards reaching high accuracy transcriptions in our engine</a>. That work proved that the foundations of our technology were solid. It also set the path from research exploration to production-ready software: optimization, API design, model packaging, easy-to-use language bindings, high quality documentation, and more. In particular, one of our first challenges was to improve latency for real-world use cases, which required rebuilding our architecture to support real-time streaming capabilities. That means doing work in small chunks, as soon as the input data is available. I wrote about some of the technical details involved on <a href="https://hacks.mozilla.org/2018/09/speech-recognition-deepspeech/">Mozilla Hacks</a>.</p>
+
+<p>As each part of this work fell into place we started to see the exciting results. So did developers interested in speech recognition and voice interactions. A community of early adopters formed, and they helped us identify gaps, and focus on the features that have the most impact for production applications. Our contributors also participated in the <a href="https://commonvoice.mozilla.org/">Common Voice</a> project to start building speech datasets for their own languages. In addition, we collaborated with academic researchers to use Common Voice data and DeepSpeech technology to <a href="https://arxiv.org/abs/1912.06670">publish the first ever automatic speech recognition results for languages like Breton, Tatar and Chuvash</a>. Some of our contributors built entire features from scratch. This work culminated in a <a href="https://hacks.mozilla.org/2019/12/deepspeech-0-6-mozillas-speech-to-text-engine/">feature packed 0.6 release</a>.</p>
+
+<p>The work on performance didn't stop, but we additionally focused on API stability and polish, and code robustness. Since 0.6 we've done a complete review of our API endpoints, fixing inconsistencies and improving usability. We've made it easier than ever to use DeepSpeech, paving the way for seamless upgrades to future versions. Our model files now include embedded default values for all configuration parameters. We’ve designed a new packaging format for our external scorer, bundling it into a single file instead of two. We added versioning metadata to all packages. Combined, these changes mean that the vast majority of users will be able to upgrade to new models by simply replacing the model files with new ones, no code changes necessary.</p>
+
+<h2>Continuous improvements on performance</h2>
+
+<p>On the performance front, we have updated our packages to use <a href="https://github.com/tensorflow/tensorflow/releases/v2.3.0">TensorFlow 2.3</a>, and enabled support for <a href="https://blog.tensorflow.org/2020/04/whats-new-in-tensorflow-lite-from-devsummit-2020.html">Ruy, a new TensorFlow Lite backend for faster CPU-backed operations</a>. Ruy allows TensorFlow Lite to better scale to multiple CPU cores on mobile platforms. With this change, DeepSpeech now has excellent performance on even more devices. Previously, our reference platform for Android devices was the Qualcomm Snapdragon 835, a high-end system-on-a-chip (SoC) released in 2016 and used in phones like the Google Pixel 2. With version 0.9 of DeepSpeech, we now have real time performance on the Nokia 1.3, an entry level phone with significantly less CPU power, running on the Qualcomm 215 SoC. On that device we went from a Real Time Factor of 2.6 to 0.9,  which means the system can keep up with audio as it is being streamed from a microphone, in real time.</p>
+
+<p>In response to feedback from our users, we have also started publishing packages with TensorFlow Lite on all platforms. Despite being optimized for mobile devices, our TensorFlow Lite packages offer some interesting performance characteristics, from smaller models to better startup speed. Depending on the type of workload expected in your application, it might be better to use the TensorFlow Lite version of DeepSpeech everywhere, not just on low power devices. On desktop platforms, you can now try the TensorFlow Lite version by simply installing the “deepspeech-tflite” package instead of “deepspeech”. Packages for mobile platforms continue to use TensorFlow Lite by default.</p>
+
+<h2>DeepSpeech now runs on iOS</h2>
+
+<p>We’ve always had strong interest from developers working on mobile platforms, from Android phones to Raspberry Pis to digital kiosks. Our Java bindings for Android have been available since version 0.5.0 and have been downloaded over 11,000 times. With DeepSpeech 0.9, we are excited to add iOS support with Swift bindings. Our latest version can transcribe one second of audio in around a quarter of a second on an iPhone Xs. If you’re an iOS developer, we also have example source code with microphone streaming capabilities.You can use it to see how the Swift API works and get started on your own app.</p>
+
+<p>
+<figure>
+    <img src="swift_screenshot.png" width="100%" alt="Screenshot of some example code using the new Swift bindings for DeepSpeech"/>
+</figure>
+</p>
+
+<p>You can try it today. Download the pre-built iOS framework and shared library <a href="https://github.com/mozilla/DeepSpeech/releases/v0.9.0">from our release page</a> and add them as dependencies in your Xcode project. We’d love to hear your feedback on the package and the bindings. Because it’s a recent addition, the Swift bindings are considered experimental and don’t yet offer API stability guarantees. We’re aiming to stabilize them in a future release.</p>
+
+<p>If you're an iOS developer, we'd love to get your feedback and help in figuring out the final details to get DeepSpeech easy to use and ship in the App Store. See the <a href="https://deepspeech.readthedocs.io/en/v0.9.0/#contact-getting-help">contact page</a> in the docs for how to get in touch.</p>
+
+<h2>New tools for creating custom models</h2>
+
+<p>All of the releases so far have included a pre-trained model for English, trained on thousands of hours of both openly available and licensed speech data. At the same time, the ability to create custom models is a core part of what makes DeepSpeech so powerful. It can allow applications with narrower vocabularies to achieve accuracies that general speech recognition offerings simply can’t match. One of the main challenges in creating new models from scratch is the need for large amounts of labeled data. Researchers have developed several techniques to alleviate this problem, and an important method is called transfer learning.</p>
+
+<p>With transfer learning, instead of starting from scratch, you start from a baseline model that has already been trained with large amounts of data. You can think of it as taking a general model and specializing it for your data, and consequently for your use case. For example, this baseline model can be our English release model. This technique allows developers to create custom models using smaller amounts of data, and can even be used to bootstrap models for new languages.</p>
+
+<p><figure><img src="specaugment.png" width="100%" alt="Visualization of an audio spectrogram before and after going through a popular transformation technique proposed by Google Brain, called SpecAugment."/>
+<figcaption>Visualization of an audio spectrogram before and after going through a popular transformation technique proposed by Google Brain, called <a href="https://ai.googleblog.com/2019/04/specaugment-new-data-augmentation.html">SpecAugment</a>.</figcaption></figure></p>
+
+<p>Another important technique is data augmentation, where you apply transformations to your samples while training the model in order to make the data more varied. Adding background noise, distortion and cuts, speeding the audio up, or slowing the audio down—these are examples of augmentations used for speech recognition.</p>
+
+<p>In the 0.9 release we now include support for both transfer learning and data augmentation. You can combine these new features with our new optimized training data format, SampleDB, to create new models faster and make the most out of your training hardware. Check out the <a href="https://deepspeech.readthedocs.io/en/v0.9.0/TRAINING.html">training documentation</a> and join our <a href="https://discourse.mozilla.org/c/deep-speech">Discourse forums</a> to talk with other developers who are creating custom models.</p>
+
+<h2>New Mandarin Chinese models</h2>
+
+<p>Last year Rosana Ardila in collaboration with the Firefox Reality team led the creaion of a 2000 hours dataset of Mandarin Chinese transcribed speech data. This dataset enabled us to do some larger scale experiments in the challenging task of Mandarin Chinese speech recognition. Conventionally, DeepSpeech uses a fixed set of target symbols (called an alphabet in the documentation and code) for the language being trained. For Chinese, the list of symbols is huge, on the order of tens of thousands of characters. Directly modeling thousands of target symbols leads to models that are too memory intensive for low resource platforms.</p>
+
+<p>Instead, we explored an idea first suggested in the <a href="https://arxiv.org/abs/1811.09021">Bytes are All You Need paper</a> by Li et. al. With this approach, instead of hand picking the target symbols for each language, you train the model directly on UTF-8 encoded strings, with the model predicting byte values directly. This introduces an additional task: the model must simultaneously learn to recognize speech and to encode that recognition according to UTF-8, where a single codepoint can span up to 4 bytes. On the other hand, it means that with an "alphabet" consisting of 256 byte values, a model can cover any UTF-8 encodable language.</p>
+
+<p>We're now releasing an experimental Chinese model as part of the DeepSpeech 0.9 release, trained using the technique described above, for interested developers to experiment with.</p>
+
+<h2>Build compelling voice applications with DeepSpeech</h2>
+
+<p>This technology is currently being used to create models for at least nine different languages in six different continents. That's as far as we know. Start-ups, established companies, research departments and hobbyists are using DeepSpeech to build innovative voice-driven applications.</p>
+
+<p>Try DeepSpeech today by following the <a href="https://deepspeech.readthedocs.io/en/v0.9.0/USING.html">usage guide</a> for your favorite programming language. The latest 0.9 English model has been trained on over 4,000 hours of speech data, and is available for download on the <a href="https://github.com/mozilla/DeepSpeech/releases/v0.9.0">release page</a>, where we also document all of the training parameters that were used to create it. You can also find the latest release in your favorite package manager: there are packages for Python, Node.JS, Electron, Java on Android, .NET on Windows and Swift on iOS. Beyond that, our community provides packages for Rust, Go, V, Nim, and more!</p>
+
+<p>I would like to thank our community of incredible contributors, who have helped immensely by testing our software, filing issues, making code contributions, improving our documentation, helping other users on our discussion boards, sharing their valuable experience deploying our technology, and constantly surprising us with incredible creativity and collaborative spirit. Each and every single one of you is appreciated. Thank you all!</p>
+
+<div class="credits">
+<a href="https://discourse.mozilla.org/u/1258">1258 - @1258</a>,</br>
+<a href="https://discourse.mozilla.org/u/18271393959">@18271393959</a>,</br>
+<a href="https://discourse.mozilla.org/u/20richardh">20richardh - @20richardh</a>,</br>
+<a href="https://discourse.mozilla.org/u/a_n">AN - @a_n</a>,</br>
+<a href="https://github.com/blewa">Aaron Blew - @blewa</a>,</br>
+<a href="https://github.com/aaron-owen">Aaron Owen - @aaron-owen</a>,</br>
+<a href="https://github.com/thecodrr">Abdullah Atta - @thecodrr</a>,</br>
+<a href="https://github.com/ObliviousParadigm">Adarsh Shetty - @ObliviousParadigm</a>,</br>
+<a href="https://discourse.mozilla.org/u/adesara.amit">Adesara Amit - @adesara.amit</a>,</br>
+<a href="https://discourse.mozilla.org/u/apradillap">Adrian Pradilla Portoles - @apradillap</a>,</br>
+<a href="https://discourse.mozilla.org/u/agarwalaashish20">Agarwalaashish20 - @agarwalaashish20</a>,</br>
+<a href="https://discourse.mozilla.org/u/akmal_nodirov">Akmal Nodirov - @akmal_nodirov</a>,</br>
+<a href="https://discourse.mozilla.org/u/aleksei_smoliarchuk">Aleksei Smoliarchuk - @aleksei_smoliarchuk</a>,</br>
+<a href="https://discourse.mozilla.org/u/alex_cannan">Alex Cannan - @alex_cannan</a>,</br>
+<a href="https://github.com/alexcannan">Alex Cannan - @alexcannan</a>,</br>
+<a href="https://github.com/piraka9011">Anas Abou Allaban - @piraka9011</a>,</br>
+<a href="https://github.com/eagledot">Anubhav - @eagledot</a>,</br>
+<a href="https://discourse.mozilla.org/u/araf.hasan15">Araf Hasan15 - @araf.hasan15</a>,</br>
+<a href="https://github.com/areyliu6">Arey - @areyliu6</a>,</br>
+<a href="https://discourse.mozilla.org/u/arun_nambiar1">Arun Nambiar - @arun_nambiar1</a>,</br>
+<a href="https://discourse.mozilla.org/u/aadeojo">Ayomide Adeojo - @aadeojo</a>,</br>
+<a href="https://discourse.mozilla.org/u/baconator">Bacon Ator - @baconator</a>,</br>
+<a href="https://github.com/baljeet">Baljeet Kumar - @baljeet</a>,</br>
+<a href="https://discourse.mozilla.org/u/beiserjohannes">Beiserjohannes - @beiserjohannes</a>,</br>
+<a href="https://discourse.mozilla.org/u/beomgon.yu">Beomgon Yu - @beomgon.yu</a>,</br>
+<a href="https://github.com/bernardohenz">Bernardo Henz - @bernardohenz</a>,</br>
+<a href="https://github.com/bhavani-subramanian">Bhavani Subramanian - @bhavani-subramanian</a>,</br>
+<a href="https://discourse.mozilla.org/u/bilal.iqbal">Bilal Iqbal - @bilal.iqbal</a>,</br>
+<a href="https://github.com/bjornbytes">Bjorn - @bjornbytes</a>,</br>
+<a href="https://github.com/mathematiguy">Caleb Moses - @mathematiguy</a>,</br>
+<a href="https://github.com/carlfm01">Carlos Fonseca - @carlfm01</a>,</br>
+<a href="https://discourse.mozilla.org/u/caucheteux">Caucheteux - @caucheteux</a>,</br>
+<a href="https://github.com/cfreemoser">Cem Philipp Freimoser - @cfreemoser</a>,</br>
+<a href="https://github.com/cahuja1992">Chirag Ahuja - @cahuja1992</a>,</br>
+<a href="https://github.com/chrillemanden">Christian Eberhardt - @chrillemanden</a>,</br>
+<a href="https://discourse.mozilla.org/u/ctzogka">Ctzogka - @ctzogka</a>,</br>
+<a href="https://github.com/celian-garcia">Célian Garcia - @celian-garcia</a>,</br>
+<a href="https://github.com/dsteinman">Dan Steinman - @dsteinman</a>,</br>
+<a href="https://discourse.mozilla.org/u/dsteinman">Dan Steinman - @dsteinman</a>,</br>
+<a href="https://github.com/DanBmh">DanBmh - @DanBmh</a>,</br>
+<a href="https://github.com/danielwinkler">Daniel Winkler - @danielwinkler</a>,</br>
+<a href="https://discourse.mozilla.org/u/mte90">Daniele Scasciafratte - @mte90</a>,</br>
+<a href="https://github.com/daanzu">David Zurow - @daanzu</a>,</br>
+<a href="https://discourse.mozilla.org/u/dgg">Dgg - @dgg</a>,</br>
+<a href="https://discourse.mozilla.org/u/dhanesh">Dhanesh Kothari - @dhanesh</a>,</br>
+<a href="https://github.com/divyanshj16">Divyansh Jha - @divyanshj16</a>,</br>
+<a href="https://discourse.mozilla.org/u/dkreutz">Dominik - @dkreutz</a>,</br>
+<a href="https://discourse.mozilla.org/u/eggonlea">Eggonlea - @eggonlea</a>,</br>
+<a href="https://discourse.mozilla.org/u/ena.1994">Ena 1994 - @ena.1994</a>,</br>
+<a href="https://discourse.mozilla.org/u/nthanhha26">Euphoria - @nthanhha26</a>,</br>
+<a href="https://github.com/ftyers">Francis Tyers - @ftyers</a>,</br>
+<a href="https://github.com/GoldschmittGabriel">GaGo - @GoldschmittGabriel</a>,</br>
+<a href="https://discourse.mozilla.org/u/sigma_g">Gaurang Tandon - @sigma_g</a>,</br>
+<a href="https://github.com/GeorgeFedoseev">George Fedoseev - @GeorgeFedoseev</a>,</br>
+<a href="https://github.com/godefv">@godefv</a>,</br>
+<a href="https://github.com/gvoysey">Graham Voysey - @gvoysey</a>,</br>
+<a href="https://github.com/gregnr">Greg Richardson - @gregnr</a>,</br>
+<a href="https://discourse.mozilla.org/u/gregorm">GregorM - @gregorm</a>,</br>
+<a href="https://github.com/gnardari">Guilherme Nardari - @gnardari</a>,</br>
+<a href="https://discourse.mozilla.org/u/noor_e_emaan11">Hafsa Farooq - @noor_e_emaan11</a>,</br>
+<a href="https://discourse.mozilla.org/u/singhal.harsh2">Harsh Singhal - @singhal.harsh2</a>,</br>
+<a href="https://discourse.mozilla.org/u/hashim">Hashim - @hashim</a>,</br>
+<a href="https://discourse.mozilla.org/u/heiner_schroeder">Heiner Schroeder - @heiner_schroeder</a>,</br>
+<a href="https://discourse.mozilla.org/u/jageshmaharjan">Jageshmaharjan - @jageshmaharjan</a>,</br>
+<a href="https://github.com/j-a-h-i-r">Jahir Islam - @j-a-h-i-r</a>,</br>
+<a href="https://github.com/engelmohr">Jan Engelmohr - @engelmohr</a>,</br>
+<a href="https://discourse.mozilla.org/u/javi.rahman">Javi Rahman - @javi.rahman</a>,</br>
+<a href="https://github.com/nullbyte91">Jegathesan Shanmugam - @nullbyte91</a>,</br>
+<a href="https://github.com/jimregan">Jim Regan - @jimregan</a>,</br>
+<a href="https://github.com/JRMeyer">Josh Meyer - @JRMeyer</a>,</br>
+<a href="https://discourse.mozilla.org/u/reyxuan">Juan - @reyxuan</a>,</br>
+<a href="https://github.com/jschueller">Julien Schueller - @jschueller</a>,</br>
+<a href="https://github.com/Jendker">Jędrzej Beniamin Orbik - @Jendker</a>,</br>
+<a href="https://github.com/karansag">Karan Sagar - @karansag</a>,</br>
+<a href="https://github.com/tirkarthi">Karthikeyan Singaravelan - @tirkarthi</a>,</br>
+<a href="https://github.com/KathyReid">Kathy Reid - @KathyReid</a>,</br>
+<a href="https://discourse.mozilla.org/u/keoni">Keoni - @keoni</a>,</br>
+<a href="https://discourse.mozilla.org/u/kevinnotable">Kevin Chih-Yao Huang - @kevinnotable</a>,</br>
+<a href="https://github.com/kristiank">Kristian Kankainen - @kristiank</a>,</br>
+<a href="https://discourse.mozilla.org/u/laxmikant04.yadav">Laxmikant04 Yadav - @laxmikant04.yadav</a>,</br>
+<a href="https://github.com/eggonlea">Li Li - @eggonlea</a>,</br>
+<a href="https://github.com/Jemyz">Mahmoud Hashem - @Jemyz</a>,</br>
+<a href="https://discourse.mozilla.org/u/johnwayne">Makhubelac9305 - @johnwayne</a>,</br>
+<a href="https://github.com/marekjg">Marek Grzegorek - @marekjg</a>,</br>
+<a href="https://discourse.mozilla.org/u/mattc_eostar">Matt C - @mattc_eostar</a>,</br>
+<a href="https://discourse.mozilla.org/u/mbonsign">Mbonsign - @mbonsign</a>,</br>
+<a href="https://discourse.mozilla.org/u/mepstein68">Mepstein68 - @mepstein68</a>,</br>
+<a href="https://discourse.mozilla.org/u/mestafakamal">Mestafa Kamal - @mestafakamal</a>,</br>
+<a href="https://github.com/mdigiorgio">Michele Di Giorgio - @mdigiorgio</a>,</br>
+<a href="https://github.com/MikalaiDrabovich">Mikalai Drabovich - @MikalaiDrabovich</a>,</br>
+<a href="https://github.com/mcfletch">Mike C. Fletcher - @mcfletch</a>,</br>
+<a href="https://github.com/mach327">Mike M - @mach327</a>,</br>
+<a href="https://github.com/Elleo">Mike Sheldon - @Elleo</a>,</br>
+<a href="https://github.com/shershen08">Mikhail Kuznetcov - @shershen08</a>,</br>
+<a href="https://github.com/milescrabill">Miles Crabill - @milescrabill</a>,</br>
+<a href="https://discourse.mozilla.org/u/utunga">Miles Thompson - @utunga</a>,</br>
+<a href="https://discourse.mozilla.org/u/cryptoaimdy">Mohammad Ali - @cryptoaimdy</a>,</br>
+<a href="https://github.com/Murcurio">Murcurio - @Murcurio</a>,</br>
+<a href="https://discourse.mozilla.org/u/muruganrajenthirean">Murugan R - @muruganrajenthirean</a>,</br>
+<a href="https://github.com/gardenia22">Nanshu - @gardenia22</a>,</br>
+<a href="https://discourse.mozilla.org/u/nasim.alam086">Nasim Alam086 - @nasim.alam086</a>,</br>
+<a href="https://discourse.mozilla.org/u/nmstoker">Neil Stoker - @nmstoker</a>,</br>
+<a href="https://discourse.mozilla.org/u/speech_deep">Neuron - @speech_deep</a>,</br>
+<a href="https://github.com/nicolaspanel">Nicolas Panel - @nicolaspanel</a>,</br>
+<a href="https://discourse.mozilla.org/u/nitesh_tiwari">Nitesh Tiwari - @nitesh_tiwari</a>,</br>
+<a href="https://github.com/nobuf">Nobu Funaki - @nobuf</a>,</br>
+<a href="https://github.com/NormanTUD">Norman - @NormanTUD</a>,</br>
+<a href="https://discourse.mozilla.org/u/othiele">Olaf Thiele - @othiele</a>,</br>
+<a href="https://discourse.mozilla.org/u/paul_raine">Paul Raine - @paul_raine</a>,</br>
+<a href="https://github.com/PedroDKE">PedroDKE - @PedroDKE</a>,</br>
+<a href="https://github.com/pietrop">Pietro - @pietrop</a>,</br>
+<a href="https://github.com/Rajpratik71">Pratik Raj - @Rajpratik71</a>,</br>
+<a href="https://discourse.mozilla.org/u/pvk444">Pvk444 - @pvk444</a>,</br>
+<a href="https://github.com/pbxqdown">Qian_Xiao - @pbxqdown</a>,</br>
+<a href="https://github.com/qboot">Quentin Brunet - @qboot</a>,</br>
+<a href="https://discourse.mozilla.org/u/rahul_jain">Rahul Jain - @rahul_jain</a>,</br>
+<a href="https://discourse.mozilla.org/u/rajpuneet.sandhu">Rajpuneet Sandhu - @rajpuneet.sandhu</a>,</br>
+<a href="https://discourse.mozilla.org/u/sranjeet.visteon">Ranjeeth - @sranjeet.visteon</a>,</br>
+<a href="https://github.com/rhamnett">Richard Hamnett - @rhamnett</a>,</br>
+<a href="https://discourse.mozilla.org/u/rilindnuka">Rilind Nuka - @rilindnuka</a>,</br>
+<a href="https://github.com/robmsmt">Rob - @robmsmt</a>,</br>
+<a href="https://github.com/rcgale">Robert Gale - @rcgale</a>,</br>
+<a href="https://github.com/roxima">Roxima - @roxima</a>,</br>
+<a href="https://discourse.mozilla.org/u/rpratesh">Rpratesh - @rpratesh</a>,</br>
+<a href="https://discourse.mozilla.org/u/sayantangangs.91">SGang - @sayantangangs.91</a>,</br>
+<a href="https://discourse.mozilla.org/u/kamil_bentounes">SU_Pamos - @kamil_bentounes</a>,</br>
+<a href="https://discourse.mozilla.org/u/safas">Sam Safaei - @safas</a>,</br>
+<a href="https://discourse.mozilla.org/u/samahzaro">Samah Zaro - @samahzaro</a>,</br>
+<a href="https://discourse.mozilla.org/u/sandere">SanderE - @sandere</a>,</br>
+<a href="https://discourse.mozilla.org/u/sanjay.pandey">Sanjay Pandey - @sanjay.pandey</a>,</br>
+<a href="https://discourse.mozilla.org/u/saumya_mishra">Saumya Mishra - @saumya_mishra</a>,</br>
+<a href="https://discourse.mozilla.org/u/scarlettsix">Scarlettsix - @scarlettsix</a>,</br>
+<a href="https://github.com/srstevenson">Scott Stevenson - @srstevenson</a>,</br>
+<a href="https://discourse.mozilla.org/u/sehar_capricon">Sehar Capricon - @sehar_capricon</a>,</br>
+<a href="https://discourse.mozilla.org/u/shadi_shakkour">Shadi Shakkour - @shadi_shakkour</a>,</br>
+<a href="https://discourse.mozilla.org/u/shamoons">Shamoon Siddiqui - @shamoons</a>,</br>
+<a href="https://discourse.mozilla.org/u/shan18">Shantanu Acharya - @shan18</a>,</br>
+<a href="https://discourse.mozilla.org/u/tieonster">Shaun Tieon - @tieonster</a>,</br>
+<a href="https://discourse.mozilla.org/u/xhtm">Shrewt z - @xhtm</a>,</br>
+<a href="https://discourse.mozilla.org/u/shruthi_sridhar">Shruthi Sridhar - @shruthi_sridhar</a>,</br>
+<a href="https://github.com/imskr">Shubham Kumar - @imskr</a>,</br>
+<a href="https://discourse.mozilla.org/u/sonofhotmale">Sonofhotmale - @sonofhotmale</a>,</br>
+<a href="https://discourse.mozilla.org/u/stanislavs_davidovics">Stanislavs Davidovics - @stanislavs_davidovics</a>,</br>
+<a href="https://discourse.mozilla.org/u/stergro">Stefan Grotz - @stergro</a>,</br>
+<a href="https://discourse.mozilla.org/u/subhash">Subhash - @subhash</a>,</br>
+<a href="https://discourse.mozilla.org/u/sudarshan.gurav14">Sudarshan Gurav14 - @sudarshan.gurav14</a>,</br>
+<a href="https://discourse.mozilla.org/u/sumeet.tiwari">Sumeet Tiwari - @sumeet.tiwari</a>,</br>
+<a href="https://discourse.mozilla.org/u/sumegha19">Sumegha19 - @sumegha19</a>,</br>
+<a href="https://discourse.mozilla.org/u/spygaurad">Suraj Prasai - @spygaurad</a>,</br>
+<a href="https://discourse.mozilla.org/u/sushantmkarande">Sushantmkarande - @sushantmkarande</a>,</br>
+<a href="https://discourse.mozilla.org/u/tarekeldeeb">Tarek Eldeeb - @tarekeldeeb</a>,</br>
+<a href="https://discourse.mozilla.org/u/technerder">Technerder - @technerder</a>,</br>
+<a href="https://discourse.mozilla.org/u/tensorfoo">Tensorfoo - @tensorfoo</a>,</br>
+<a href="https://discourse.mozilla.org/u/tortoise">Tortoise - @tortoise</a>,</br>
+<a href="https://discourse.mozilla.org/u/tuttlebr">Tuttlebr - @tuttlebr</a>,</br>
+<a href="https://github.com/code-R">Vamsi - @code-R</a>,</br>
+<a href="https://discourse.mozilla.org/u/vcjobacc">Vcjobacc - @vcjobacc</a>,</br>
+<a href="https://discourse.mozilla.org/u/vibhav_anand">Vibhav Anand - @vibhav_anand</a>,</br>
+<a href="https://discourse.mozilla.org/u/vigneshgig">Vigneshgig - @vigneshgig</a>,</br>
+<a href="https://discourse.mozilla.org/u/elpimous_robot">Vincent Foucault - @elpimous_robot</a>,</br>
+<a href="https://github.com/vinhngx">Vinh Nguyen - @vinhngx</a>,</br>
+<a href="https://github.com/william-vw">William Van Woensel - @william-vw</a>,</br>
+<a href="https://discourse.mozilla.org/u/yana.hontarenko">Yana Hontarenko - @yana.hontarenko</a>,</br>
+<a href="https://discourse.mozilla.org/u/yasine.nifa">Yasine Nifa - @yasine.nifa</a>,</br>
+<a href="https://github.com/mychiux413">Yi-Hua Chiu - @mychiux413</a>,</br>
+<a href="https://discourse.mozilla.org/u/yv001">Yv - @yv001</a>,</br>
+<a href="https://github.com/aayagar001">aayagar001 - @aayagar001</a>,</br>
+<a href="https://github.com/alchemi5t">alchemi5t - @alchemi5t</a>,</br>
+<a href="https://discourse.mozilla.org/u/alchemi5t">alchemi5t - @alchemi5t</a>,</br>
+<a href="https://discourse.mozilla.org/u/anas9011">@anas9011</a>,</br>
+<a href="https://discourse.mozilla.org/u/axcn">axcn - @axcn</a>,</br>
+<a href="https://github.com/b-ak">bak - @b-ak</a>,</br>
+<a href="https://github.com/bprfh">bprfh - @bprfh</a>,</br>
+<a href="https://discourse.mozilla.org/u/carlfm01">@carlfm01</a>,</br>
+<a href="https://discourse.mozilla.org/u/cekhwang">cekhwang - @cekhwang</a>,</br>
+<a href="https://github.com/CR1AT0RS">cr1at0rs - @CR1AT0RS</a>,</br>
+<a href="https://github.com/crs117">crs117 - @crs117</a>,</br>
+<a href="https://github.com/dabinat">@dabinat</a>,</br>
+<a href="https://discourse.mozilla.org/u/dan.bmh">dan.bmh - @dan.bmh</a>,</br>
+<a href="https://github.com/d-a-v">david gauchard - @d-a-v</a>,</br>
+<a href="https://discourse.mozilla.org/u/deep_learning">deep learning - @deep_learning</a>,</br>
+<a href="https://discourse.mozilla.org/u/dhkor">@dhkor</a>,</br>
+<a href="https://github.com/dwks">dwks - @dwks</a>,</br>
+<a href="https://discourse.mozilla.org/u/dwn">@dwn</a>,</br>
+<a href="https://discourse.mozilla.org/u/epoetin">@epoetin</a>,</br>
+<a href="https://discourse.mozilla.org/u/maestusuada">eren - @maestusuada</a>,</br>
+<a href="https://github.com/est31">est31 - @est31</a>,</br>
+<a href="https://github.com/faissaloo">faissaloo - @faissaloo</a>,</br>
+<a href="https://discourse.mozilla.org/u/freber">@freber</a>,</br>
+<a href="https://discourse.mozilla.org/u/i140224_ma">i140224 - @i140224_ma</a>,</br>
+<a href="https://github.com/igorfritzsch">ifr - @igorfritzsch</a>,</br>
+<a href="https://discourse.mozilla.org/u/isabellajiang">@isabellajiang</a>,</br>
+<a href="https://discourse.mozilla.org/u/jendker">@jendker</a>,</br>
+<a href="https://github.com/jorxster">jorxster - @jorxster</a>,</br>
+<a href="https://github.com/juandspy">juandspy - @juandspy</a>,</br>
+<a href="https://discourse.mozilla.org/u/kezakool">kezakool - @kezakool</a>,</br>
+<a href="https://github.com/madprogramer">madprogramer - @madprogramer</a>,</br>
+<a href="https://discourse.mozilla.org/u/masoud_parpanchi">masoud parpanchi - @masoud_parpanchi</a>,</br>
+<a href="https://github.com/mone27">mone27 - @mone27</a>,</br>
+<a href="https://discourse.mozilla.org/u/orion">mscs16039@itu.edu.pk - @orion</a>,</br>
+<a href="https://discourse.mozilla.org/u/halder.nayan35">nayan halder - @halder.nayan35</a>,</br>
+<a href="https://github.com/pannous">pannous - @pannous</a>,</br>
+<a href="https://discourse.mozilla.org/u/pete">pete - @pete</a>,</br>
+<a href="https://discourse.mozilla.org/u/plato">@plato</a>,</br>
+<a href="https://discourse.mozilla.org/u/plusout">plusout@mail.ru - @plusout</a>,</br>
+<a href="https://discourse.mozilla.org/u/pra978">@pra978</a>,</br>
+<a href="https://discourse.mozilla.org/u/udaram">print("Simple") - @udaram</a>,</br>
+<a href="https://github.com/qin">qin - @qin</a>,</br>
+<a href="https://discourse.mozilla.org/u/rbewoor">rbewoor - @rbewoor</a>,</br>
+<a href="https://github.com/ricky-ck-chan">ricky-ck-chan - @ricky-ck-chan</a>,</br>
+<a href="https://discourse.mozilla.org/u/ritishadhikari">@ritishadhikari</a>,</br>
+<a href="https://github.com/ryojiysd">ryojiysd - @ryojiysd</a>,</br>
+<a href="https://discourse.mozilla.org/u/salman">@salman</a>,</br>
+<a href="https://discourse.mozilla.org/u/saravananselvamohan">saravananselvmaohan - @saravananselvamohan</a>,</br>
+<a href="https://discourse.mozilla.org/u/swarajbadhei">@swarajbadhei</a>,</br>
+<a href="https://github.com/the-nose-knows">the-nose-knows - @the-nose-knows</a>,</br>
+<a href="https://discourse.mozilla.org/u/20164356">tuanmaianh - @20164356</a>,</br>
+<a href="https://discourse.mozilla.org/u/victornoriega7">@victornoriega7</a>,</br>
+<a href="https://discourse.mozilla.org/u/yk98">@yk98</a>,</br>
+<a href="https://discourse.mozilla.org/u/zhangpeng_k">zhangpeng K - @zhangpeng_k</a>,</br>
+<a href="https://github.com/lwalejko">Łukasz Wałejko - @lwalejko</a></br>
+</div>
+</div>
+</body>
+</html>
