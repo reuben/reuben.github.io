@@ -29,7 +29,7 @@ body {
     line-height: 1.5em;
 }
 
-.author {
+.authordate {
     font-size: 14px;
     font-style: italic;
     margin-bottom: 30px;
@@ -44,16 +44,16 @@ body {
 <a href="https://reub.in/">Home</a>
 <div class="center">
 <h1 class="title">DeepSpeech 0.9 - mature, polished, fast, ubiquitous</h1>
-<p class="author">Reuben Morais</p>
+<p class="authordate">Reuben Morais - 2020-11-02</p>
 <p><a href="https://github.com/mozilla/DeepSpeech">DeepSpeech</a> is an open-source speech-to-text (STT) engine powered by deep learning. DeepSpeech offers high quality, offline, low latency speech-to-text technology that's simple to integrate into your applications, thanks to our easy-to-use API, which supports multiple architectures, platforms, and programming languages. It leverages TensorFlow Lite for fast and compact inference on low power platforms. DeepSpeech is the result of the hard work of a small team of brilliant people I've had the pleasure to work with over the past few years, and a large group of interested developers, users and organizations.</p>
 
-<p>After volunteering to write the <a href="https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/">first article</a> documenting our work on the project, I unofficially inherited the responsibility of writing about our progress (in typical open source fashion, good deeds are <strike>punished</strike>rewarded with ownership). I did so in <a href="https://hacks.mozilla.org/2018/09/speech-recognition-deepspeech/">two</a> <a href="https://hacks.mozilla.org/2019/12/deepspeech-0-6-mozillas-speech-to-text-engine/">subsequent</a> articles for Mozilla Hacks. These past articles have focused strongly on technical aspects and recognizing the work of our amazing external contributors. This article will also cover technical details and contributions, but this time I would like to start by talking about my brilliant colleagues and former colleagues and some of their contributions that were instrumental in building DeepSpeech.</p>
+<p>After volunteering to write the <a href="https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/">first article</a> documenting our work on the project, I unofficially inherited the responsibility of writing about our progress (in typical open source fashion, good deeds are <strike>punished</strike>rewarded with ownership). I did so in <a href="https://hacks.mozilla.org/2018/09/speech-recognition-deepspeech/">two</a> <a href="https://hacks.mozilla.org/2019/12/deepspeech-0-6-mozillas-speech-to-text-engine/">subsequent</a> articles for Mozilla Hacks. These past articles have focused strongly on technical aspects and recognizing the work of our amazing external contributors. This article will also cover technical details and contributions, but this time I would like to start by talking about my colleagues and former colleagues and some of their contributions that were instrumental in building DeepSpeech.</p>
 
 <h2>The Dream Team</h2>
 
-<p>Alexandre Lissy figured out the at the time scarcely documented TensorFlow Lite API and internals to integrate it into our native client, including adding cross-compilation support for ARM platforms, to enable DeepSpeech to work on Android, Raspberry Pi, and eventually iOS. He also built our extensive continuous integration setup, leveraging Mozilla's TaskCluster project and getting us CI coverage on all our supported platforms and configurations. Together with other French speaking members of our community, Alex coordinated efforts to avoid duplicated work on building French models for DeepSpeech.</p>
+<p>Alexandre Lissy figured out the (at the time scarcely documented) TensorFlow Lite API and internals to integrate it into our native client, including adding cross-compilation support for ARM platforms, to enable DeepSpeech to work on Android, Raspberry Pi, and eventually iOS. He also built our extensive continuous integration setup, leveraging Mozilla's TaskCluster project and getting us CI coverage on all our supported platforms and configurations. Together with other French speaking members of our community, Alex coordinated community efforts on building French models for DeepSpeech.</p>
 
-<p>Chris Lord reverse engineered the TensorFlow build system to figure out a clever way to integrate it into our C++ inference library, back when both TensorFlow and Bazel were younger, less mature, and less documented projects. Chris also reimplemented the Python feature computation library we used in C, getting the first version of our native client working.</p>
+<p>Chris Lord reverse engineered the TensorFlow build system to figure out a clever way to integrate it into our C++ inference library, back when both TensorFlow and Bazel were younger, less mature, and less documented projects. Chris also reimplemented the Python feature computation library we used in C, getting the first version of our inference API up and running from feature computation all the way to presenting results.</p>
 
 <p>Kelly Davis lead the team with attention and care from the beginning. I'm deeply grateful for his leadership and mentoring, and was always inspired by how hard working and professional he's always been. Kelly wrote the initial replication of the Deep Speech paper from Baidu. He connected our work and our team with interested companies, research groups and governments all around the world, multiplying our reach and impact. He secured grants that enabled the team to work on new, impactful projects such as the Bergamot browser machine translation project.</p>
 
