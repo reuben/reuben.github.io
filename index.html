@@ -19,7 +19,63 @@ body {
 .cool {
     font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
 }
+
+.flying-square {
+    left: 40px;
+    width: 200px;
+    height: 200px;
+    background-color: rgba(100, 149, 237, 0.1);
+    position: absolute;
+    z-index: -999999;
+    animation: 10s ease-in-out 1 normal forwards flying;
+}
+
+@keyframes flying {
+    from {
+        top: var(--ti, -200px);
+        transform: var(--di, rotate(0deg));
+    }
+
+    to {
+        top: var(--tf, calc(100% - 200px));
+        transform: var(--df, rotate(360deg));
+        transform: rotate3d(1, 2, -1, 135deg);
+    }
+}
+
+.rare-collectors-edition-flying-square {
+    background-image: url(hoffman.jpg);
+    background-size: 100%;
+}
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let colors = [
+        "#ff71ce",
+        "#01cdfe",
+        "#05ffa1",
+        "#b967ff",
+        "#fffb96",
+        "#05ffa1",
+        "#b967ff",
+        "#fffb96",
+    ];
+    let isItEaster = Math.random() < 0.01;
+    for (let i = 0; i < 30; ++i) {
+        let div = document.createElement("div");
+        div.classList = ["flying-square"];
+        if (i == 3 && isItEaster) {
+            div.classList.add("rare-collectors-edition-flying-square");
+        }
+        div.style.setProperty("--di", "rotate(" + i*7 + "deg)");
+        div.style.setProperty("--df", "rotate(" + (360 + i*7) + "deg)");
+        div.style.setProperty("--ti", "-" + (200+i*300) + "px");
+        div.style.setProperty("--tf", "calc(100% - " + (200+i*5) + "px");
+        div.style["background-color"] = colors[i % colors.length];
+        document.body.appendChild(div);
+    }
+});
+</script>
 </head>
 <body>
 <div class="center">
