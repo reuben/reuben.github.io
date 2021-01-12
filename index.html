@@ -10,6 +10,10 @@ body {
     text-align: justify;
 }
 
+.content {
+    position: relative;
+}
+
 .center {
     max-width: 96ch;
     margin: 0 auto;
@@ -20,32 +24,63 @@ body {
     font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
 }
 
-.flying-square {
-    left: 40px;
-    width: 200px;
-    height: 200px;
-    background-color: rgba(100, 149, 237, 0.1);
-    position: absolute;
-    z-index: -999999;
-    animation: 10s ease-in-out 1 normal forwards flying;
-}
-
-@keyframes flying {
-    from {
-        top: var(--ti, -200px);
-        transform: var(--di, rotate(0deg));
-    }
-
-    to {
-        top: var(--tf, calc(100% - 200px));
-        transform: var(--df, rotate(360deg));
-        transform: rotate3d(1, 2, -1, 135deg);
-    }
-}
-
 .rare-collectors-edition-flying-square {
     background-image: url(hoffman.jpg);
     background-size: 100%;
+}
+
+@media (min-width: 1366px) {
+    .flying-square {
+        left: 40px;
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        z-index: -999999;
+        animation: 10s ease-in-out 1 normal forwards flying;
+    }
+
+    @keyframes flying {
+        from {
+            top: var(--ti, -200px);
+            transform: var(--di, rotate(0deg));
+            transform: rotate3d(1, 2, -1, 0deg);
+        }
+
+        to {
+            top: var(--tf, calc(100% - 200px));
+            transform: var(--df, rotate(360deg));
+            transform: rotate3d(1, 2, -1, 60deg);
+        }
+    }
+}
+
+@media (max-width: 1365px) {
+    .content {
+        padding-bottom: 150px;
+    }
+
+    .flying-square {
+        bottom: 40px;
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        z-index: -999999;
+        animation: 10s ease-in-out 1 normal forwards flying;
+    }
+
+    @keyframes flying {
+        from {
+            left: var(--ti, -100px);
+            transform: var(--di, rotate(0deg));
+            transform: rotate3d(1, 2, -1, 0deg);
+        }
+
+        to {
+            left: var(--tf, calc(100% - 100px));
+            transform: var(--df, rotate(360deg));
+            transform: rotate3d(1, 2, -1, 60deg);
+        }
+    }
 }
 </style>
 <script>
@@ -60,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function() {
         "#b967ff",
         "#fffb96",
     ];
+    const parentDiv = document.querySelector(".content");
     let isItEaster = Math.random() < 0.01;
     for (let i = 0; i < 30; ++i) {
         let div = document.createElement("div");
@@ -72,12 +108,13 @@ document.addEventListener("DOMContentLoaded", function() {
         div.style.setProperty("--ti", "-" + (200+i*300) + "px");
         div.style.setProperty("--tf", "calc(100% - " + (200+i*5) + "px");
         div.style["background-color"] = colors[i % colors.length];
-        document.body.appendChild(div);
+        parentDiv.appendChild(div);
     }
 });
 </script>
 </head>
 <body>
+<div class="content">
 <div class="center">
 <p>Hi, my name is Reuben Morais</p>
 <p>I'm a Senior Research Engineer working on the Applied Machine Learning team at Mozilla. Most of my recent work is <a href="http://github.com/reuben">on GitHub</a>. You can email me at <a href="mailto:me@reub.in">me@reub.in</a>.</p>
@@ -107,5 +144,6 @@ document.addEventListener("DOMContentLoaded", function() {
 <p>
 << <a href="https://reub.in/">Home</a> | <a href="https://psychonautgirl.space/">Mariana Meireles</a> | <a href="https://erogol.com/">Eren Gölge</a> | <a href="https://dflate.io/">Gregor Weber</a> | <a href="https://karenzshea.com/">Karen Shea</a> >>
 </p>
+</div>
 </div>
 </body>
