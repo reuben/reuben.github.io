@@ -31,25 +31,22 @@ body {
 
 @media (min-width: 1366px) {
     .flying-square {
-        left: 40px;
-        width: 100px;
-        height: 100px;
         position: absolute;
-        z-index: -999999;
-        animation: 10s ease-in-out 1 normal forwards flying;
+        left: 40px;
+        width: 200px;
+        height: 200px;
+        top: var(--ti, -200px);
+        animation: var(--duration, 10s) ease-in-out var(--delay, 0ms) 1 normal forwards flying;
     }
 
     @keyframes flying {
         from {
-            top: var(--ti, -200px);
-            transform: var(--di, rotate(0deg));
-            transform: rotate3d(1, 2, -1, 0deg);
+            transform: var(--di, rotate(0deg)) rotate3d(1, 2, -1, 0deg);
         }
 
         to {
             top: var(--tf, calc(100% - 200px));
-            transform: var(--df, rotate(360deg));
-            transform: rotate3d(1, 2, -1, 60deg);
+            transform: rotate(180deg) rotate3d(1, 2, -1, 60deg);
         }
     }
 }
@@ -60,25 +57,22 @@ body {
     }
 
     .flying-square {
+        position: absolute;
         bottom: 40px;
         width: 100px;
         height: 100px;
-        position: absolute;
-        z-index: -999999;
-        animation: 10s ease-in-out 1 normal forwards flying;
+        left: var(--ti, -100px);
+        animation: var(--duration, 10s) ease-in-out var(--delay, 0ms) 1 normal forwards flying;
     }
 
     @keyframes flying {
         from {
-            left: var(--ti, -100px);
-            transform: var(--di, rotate(0deg));
-            transform: rotate3d(1, 2, -1, 0deg);
+            transform: var(--di, rotate(0deg)) rotate3d(1, 2, -1, 0deg);
         }
 
         to {
             left: var(--tf, calc(100% - 100px));
-            transform: var(--df, rotate(360deg));
-            transform: rotate3d(1, 2, -1, 60deg);
+            transform: rotate(180deg) rotate3d(1, 2, -1, 135deg);
         }
     }
 }
@@ -96,17 +90,27 @@ document.addEventListener("DOMContentLoaded", function() {
         "#fffb96",
     ];
     const parentDiv = document.querySelector(".content");
+    const duration = 5000; // ms
+    const distanceAtEnd = 10; // px
+    const numSpinnies = 30;
+    const delay = duration / numSpinnies / 2;
     let isItEaster = Math.random() < 0.01;
-    for (let i = 0; i < 30; ++i) {
+    for (let i = 0; i < numSpinnies; ++i) {
         let div = document.createElement("div");
         div.classList = ["flying-square"];
         if (i == 3 && isItEaster) {
             div.classList.add("rare-collectors-edition-flying-square");
         }
+        div.style.setProperty("--duration", duration + "ms");
+        div.style.setProperty("--delay", (i * delay) + "ms");
+        div.style["z-index"] = "-" + (numSpinnies-i);
         div.style.setProperty("--di", "rotate(" + i*7 + "deg)");
-        div.style.setProperty("--df", "rotate(" + (360 + i*7) + "deg)");
+        // const offsets = [3, 5, 7, 11, 13];
+        // const noise = offsets[Math.floor(Math.random() * offsets.length)];
+        // div.style.setProperty("--df", "rotate(" + (360 + i*7 + noise) + "")");
+        div.style.setProperty("--df", "rotate(360deg)");
         div.style.setProperty("--ti", "-" + (200+i*300) + "px");
-        div.style.setProperty("--tf", "calc(100% - " + (200+i*5) + "px");
+        div.style.setProperty("--tf", "calc(100% - " + (200+i*distanceAtEnd) + "px");
         div.style["background-color"] = colors[i % colors.length];
         parentDiv.appendChild(div);
     }
