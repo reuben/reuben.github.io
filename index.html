@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function() {
         div.style["z-index"] = "-" + (numSpinnies-i);
         div.style.setProperty("--di", "rotate(" + i*7 + "deg) rotate3d(1, 2, -1, 0deg)");
         div.style.setProperty("--ti", "-" + (200+i*300) + "px");
-        div.style.setProperty("--tf", "calc(100% - " + (200+i*distanceAtEnd) + "px");
+        div.style.setProperty("--tf", "calc(100% - " + (200+i*distanceAtEnd) + "px)");
         div.style["background-color"] = colors[i % colors.length];
         parentDiv.appendChild(div);
         divs.push(div);
