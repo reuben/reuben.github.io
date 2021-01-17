@@ -41,12 +41,12 @@ body {
 
     @keyframes flying {
         from {
-            transform: var(--di, rotate(0deg)) rotate3d(1, 2, -1, 0deg);
+            transform: var(--di, rotate(0deg) rotate3d(1, 2, -1, 0deg));
         }
 
         to {
             top: var(--tf, calc(100% - 200px));
-            transform: rotate(180deg) rotate3d(1, 2, -1, 60deg);
+            transform: var(--df, rotate(180deg) rotate3d(1, 2, -1, 60deg));
         }
     }
 }
@@ -67,12 +67,12 @@ body {
 
     @keyframes flying {
         from {
-            transform: var(--di, rotate(0deg)) rotate3d(1, 2, -1, 0deg);
+            transform: var(--di, rotate(0deg) rotate3d(1, 2, -1, 0deg));
         }
 
         to {
             left: var(--tf, calc(100% - 100px));
-            transform: rotate(180deg) rotate3d(1, 2, -1, 135deg);
+            transform: var(--df, rotate(180deg) rotate3d(1, 2, -1, 135deg));
         }
     }
 }
@@ -94,7 +94,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const distanceAtEnd = 10; // px
     const numSpinnies = 30;
     const delay = duration / numSpinnies / 2;
-    let isItEaster = Math.random() < 0.01;
+    const isItEaster = Math.random() < 0.01;
+    let divs = [];
     for (let i = 0; i < numSpinnies; ++i) {
         let div = document.createElement("div");
         div.classList = ["flying-square"];
@@ -104,15 +105,50 @@ document.addEventListener("DOMContentLoaded", function() {
         div.style.setProperty("--duration", duration + "ms");
         div.style.setProperty("--delay", (i * delay) + "ms");
         div.style["z-index"] = "-" + (numSpinnies-i);
-        div.style.setProperty("--di", "rotate(" + i*7 + "deg)");
-        // const offsets = [3, 5, 7, 11, 13];
-        // const noise = offsets[Math.floor(Math.random() * offsets.length)];
-        // div.style.setProperty("--df", "rotate(" + (360 + i*7 + noise) + "")");
-        div.style.setProperty("--df", "rotate(360deg)");
+        div.style.setProperty("--di", "rotate(" + i*7 + "deg) rotate3d(1, 2, -1, 0deg)");
         div.style.setProperty("--ti", "-" + (200+i*300) + "px");
         div.style.setProperty("--tf", "calc(100% - " + (200+i*distanceAtEnd) + "px");
         div.style["background-color"] = colors[i % colors.length];
         parentDiv.appendChild(div);
+        divs.push(div);
+    }
+
+    // Mouse hover logic only runs on desktop
+    if (window.matchMedia("(min-width: 1366px)").matches) {
+        let currentMouseX = 99999;
+        let currentMouseY = 99999;
+        window.addEventListener("mousemove", function(evt){
+            currentMouseX = evt.pageX;
+            currentMouseY = evt.pageY;
+        });
+
+        function clamp(val, min, max) {
+            if (val < min) {
+                return min;
+            }
+            if (val > max) {
+                return max;
+            }
+            return val;
+        }
+
+        const threshold = 200;
+
+        function updateAwayFromCursor(timestamp) {
+            for (const div of divs) {
+                const pos = div.getBoundingClientRect();
+                const distance = Math.sqrt(Math.pow((pos.x + pos.width/2) - currentMouseX, 2) + Math.pow((pos.y + pos.height/2) - currentMouseY, 2));
+                if (distance < threshold) {
+                    div.style.setProperty("--df", "rotate(180deg) rotate3d(1, 2, -1, " + (60 - clamp(threshold - distance, 0, threshold)) + "deg)");
+                } else {
+                    // reset
+                    div.style.setProperty("--df", "rotate(180deg) rotate3d(1, 2, -1, 60deg)");
+                }
+            }
+            window.requestAnimationFrame(updateAwayFromCursor);
+        }
+
+        window.requestAnimationFrame(updateAwayFromCursor);
     }
 });
 </script>
