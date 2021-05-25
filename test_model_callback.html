@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function() {
         let req = new XMLHttpRequest();
         req.open("POST", url);
         req.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-        req.send(JSON.stringify({"acoustic": "foo", "scorer": "bar"}));
+        req.send(JSON.stringify({"acoustic": "https://github.com/coqui-ai/STT-models/releases/download/english/coqui/v0.9.3/model.pbmm", "scorer": "https://github.com/coqui-ai/STT/releases/download/v0.9.3/coqui-stt-0.9.3-models.scorer"}));
     });
 });
 </script>
